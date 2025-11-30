@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>VoltBot AI Chat</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    h2 { margin-top: 20px; color: #58a6ff; }
+    #chatbox {
+      width: 90%;
+      max-width: 600px;
+      flex: 1;
+      background: #161b22;
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .msg { margin: 10px 0; line-height: 1.4; }
+    .user { color: #3fb950; }
+    .bot { color: #58a6ff; }
+    #bottom-bar {
+      display: flex;
+      width: 90%;
+      max-width: 600px;
+      margin: 10px 0 20px 0;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background: #21262d;
+      color: #e6edf3;
+    }
+    button {
+      margin-left: 5px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 5px;
+      background: #238636;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #2ea043; }
+  </style>
+</head>
+<body>
+  <h2>🤖 VoltBot AI Chat</h2>
+  <div id="chatbox"></div>
+  <div id="bottom-bar">
+    <input id="input" placeholder="Ketik pesan lalu tekan Enter..." />
+    <button onclick="send()">Kirim</button>
+  </div>
+
+  <script>
+    const input = document.getElementById("input");
+    const chatbox = document.getElementById("chatbox");
+
+  function addMessage(text, sender) {
+      const msg = document.createElement("div");
+      msg.className = "msg " + sender;
+      msg.textContent = (sender === "user" ? "🧑: " : "🤖: ") + text;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    async function getAIResponse(prompt) {
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        const data = await res.json();
+
+        // 🧩 Deteksi error dari API
+        if (!res.ok) {
+          const errMsg = data.error?.message || "Tidak diketahui (mungkin API key salah)";
+          return `⚠️ Gagal memproses: ${errMsg}`;
+        }
+
+        if (!data.choices || data.choices.length === 0) {
+          return "⚠️ Tidak ada respons dari model.";
+        }
+
+        return data.choices[0].message.content.trim();
+
+      } catch (err) {
+        return "⚠️ Terjadi error jaringan: " + err.message;
+      }
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage(text, "user");
+      input.value = "";
+
+      const thinking = document.createElement("div");
+      thinking.className = "msg bot";
+      thinking.textContent = "🤖: ...sedang berpikir...";
+      chatbox.appendChild(thinking);
+      chatbox.scrollTop = chatbox.scrollHeight;
+
+      const reply = await getAIResponse(text);
+      chatbox.removeChild(thinking);
+      addMessage(reply, "bot");
+    }
+
+    input.addEventListener("keypress", e => {
+      if (e.key === "Enter") send();
+    });
+  </script>
+</body>
+</html>
